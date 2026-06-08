@@ -1,0 +1,46 @@
+name: Update Magnitek supplemental feed
+
+on:
+  schedule:
+    # Каждый час в :00 UTC — тянем свежий фид OpenCart, пересобираем supplemental
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'transform.py'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-feed
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build supplemental CSV
+        run: python transform.py
+
+      - name: Commit & push if changed
+        run: |
+          if git diff --quiet docs/magnitek-supplemental.csv; then
+            echo "Supplemental без изменений — коммит не нужен."
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/magnitek-supplemental.csv
+            git commit -m "Auto-update supplemental [$(date -u +'%Y-%m-%d %H:%M UTC')]"
+            git push
+          fi

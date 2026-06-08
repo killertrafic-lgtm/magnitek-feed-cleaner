@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+/magnitek-supplemental.tsv
+/magnitek-supplemental.csv
+/magnitek-supplemental-nodesc.csv
+.DS_Store
