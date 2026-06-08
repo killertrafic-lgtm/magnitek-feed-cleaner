@@ -13,13 +13,20 @@ Magnitek supplemental feed builder — сварочное оборудовани
 
 Бренд MAGNITEK собственный → чужой ТМ нет; совместимость (WP-17/РТ31/ER5356) в title легитимна.
 """
-import html, re, os, csv, sys, urllib.request
+import html, re, os, csv, sys, json, urllib.request
 import xml.etree.ElementTree as ET
 
 FEED_URL = "https://magnitek.ua/index.php?route=extension/feed/remarketing_feed&language=ru-ru"
 NS = {"g": "http://base.google.com/ns/1.0"}
 OUT_CSV = os.path.join("docs", "magnitek-supplemental.csv")
 MIN_ITEMS = 550   # стабильно 613; ниже = обрезанный фид, не публикуем
+
+# LLM-оптимизированные title/description (слой поверх регулярок), подхват по id.
+# Новые товары без записи здесь идут через регулярки до следующего LLM-прогона.
+try:
+    OPTIMIZED = json.load(open("optimized.json", encoding="utf-8"))
+except (FileNotFoundError, ValueError):
+    OPTIMIZED = {}
 
 # ── Категоризация (two-anchor, порядок сверху вниз; первое совпадение побеждает) ──
 MASK_M = ["хамелеон", "маска сварщ", "маска зварюв", "сварочная маска", "зварювальна маска",
@@ -210,6 +217,12 @@ def build_rows(xml_bytes):
                 bits.append("Расходный элемент для сварочного оборудования, заменяемая часть.")
                 desc = " ".join(bits)
         desc = re.sub(r"\s+", " ", desc).strip()
+
+        # LLM-оптимизация перекрывает регулярки, если есть запись для этого id
+        _opt = OPTIMIZED.get(gid)
+        if _opt:
+            title = _opt.get("title") or title
+            desc = _opt.get("description") or desc
 
         # ── custom_label_3 совместимость ──
         cl3 = ""
